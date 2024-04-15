@@ -11,21 +11,21 @@ public class FieldLogTrace implements LogTrace{
     private static final String COMPLETE_PREFIX = "<--";
     private static final String EX_PREFIX = "<X-";
 
-    private TraceId traceIdHolder; //traceId 동기화 , 동시성 이슈 발생
+    private ThreadLocal<TraceId> traceIdHolder = new ThreadLocal<>();
     @Override
     public TraceStatus begin(String message) {
         snTraceId();
-        TraceId traceId = traceIdHolder;
+        TraceId traceId = traceIdHolder.get();
         Long startTimeMs = System.currentTimeMillis();
         log.info("[{}] {}{}" , traceId.getId() , addSpace(START_PREFIX , traceId.getLevel()),message);
         return new TraceStatus(traceId , startTimeMs , message);
     }
 
     private void snTraceId(){
-        if(traceIdHolder == null){
-            traceIdHolder = new TraceId();
+        if(traceIdHolder.get() == null){
+            traceIdHolder.set(new TraceId());
         }else{
-            traceIdHolder = traceIdHolder.createNextId();
+            traceIdHolder.set(traceIdHolder.get().createNextId());
         }
     }
     @Override
@@ -55,10 +55,10 @@ public class FieldLogTrace implements LogTrace{
     }
 
     private void releaseTraceId() {
-        if(traceIdHolder.isFirstLevel()){
-            traceIdHolder = null;
+        if(traceIdHolder.get().isFirstLevel()){
+            traceIdHolder.remove();
         }else{
-            traceIdHolder = traceIdHolder.createPrevId();
+            traceIdHolder.set(traceIdHolder.get().createPrevId());
         }
     }
 
